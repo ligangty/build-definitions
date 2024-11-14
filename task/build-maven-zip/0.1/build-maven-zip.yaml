@@ -1,0 +1,211 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  labels:
+    app.kubernetes.io/version: "0.2"
+    build.appstudio.redhat.com/build_type: "maven-zip"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: "maven-build, konflux"
+  name: build-maven-zip
+spec:
+  description: |-
+    This takes existing Image Manifests and combines them in an Image Index.
+  params:
+  - description: Reference of the image buildah will produce.
+    name: IMAGE
+    type: string
+  - default: "generic"
+    description: The prefetched content which is used in the build.
+    name: PREFETCH_INPUT
+    type: string
+  - default: "maven-repository"
+    description: The root of the prefetched artifacts
+    name: PREFETCH_ROOT
+    type: string
+  - name: caTrustConfigMapName
+    type: string
+    description: The name of the ConfigMap to read CA bundle data from.
+    default: trusted-ca
+  - name: caTrustConfigMapKey
+    type: string
+    description: The name of the key in the ConfigMap that contains the CA bundle data.
+    default: ca-bundle.crt
+
+  results:
+  - description: Digest of the image just built
+    name: IMAGE_DIGEST
+  - description: Image repository and tag where the built image was pushed
+    name: IMAGE_URL
+  - name: SBOM_BLOB_URL
+    description: Reference of SBOM blob digest to enable digest-based verification from provenance
+    type: string
+  stepTemplate:
+    volumeMounts:
+      - mountPath: /shared
+        name: shared
+    env:
+    - name: IMAGE
+      value: $(params.IMAGE)
+    - name: INPUT
+      value: $(params.PREFETCH_INPUT)
+    - name: PKG_ROOT
+      value: $(params.PREFETCH_ROOT)
+
+  steps:
+  - image: quay.io/konflux-ci/appstudio-utils@sha256:d0fecb67dd98d874704f2e3d20686363de7cbb42c15ad2b1d8e8c38118c50078
+    name: prepare
+    computeResources:
+      limits:
+        memory: 8Gi
+        cpu: '4'
+      requests:
+        memory: 2Gi
+        cpu: '1'
+    script: |
+      #!/bin/bash
+      set -e
+      # Generate checksums for all maven artifact files. It will ignore the checksum files
+      # and signature files if they existed there
+      BYPASS_FILE_TYPES=("md5" "sha1" "sha128" "sha256" "sha512" "asc")
+      pkgpath="$(workspaces.source.path)/cachi2/output/deps/$INPUT"
+      if [ -d "$pkgpath/${PKG_ROOT}" ]; then
+        echo "Generating checksums for artifacts"
+        for f in $(find "$pkgpath/${PKG_ROOT}" -type f)
+        do
+          filename=$(basename -- "$f")
+          extension="${filename##*.}"
+          process=0
+          for t in ${BYPASS_FILE_TYPES[@]}
+          do
+            if [ "$extension" == "$t" ]; then
+              process=1
+              break
+            fi
+          done
+          if [ "$process" == "0" ]; then
+            md5sum $f | awk '{print $1}'> $f.md5
+            sha1sum $f | awk '{print $1}'> $f.sha1
+            sha256sum $f | awk '{print $1}'> $f.sha256
+          else
+            echo "Bypassed checksum generation for $f"
+          fi
+        done
+        # Bundle the artifacts and checksums together into a zip file
+        cd "$pkgpath"
+        echo "create maven zip to $(workspaces.source.path)/cachi2/output/${PKG_ROOT}.zip"
+        zip -rq "${PKG_ROOT}.zip" "${PKG_ROOT}"
+        mv "${PKG_ROOT}.zip" "/shared/${PKG_ROOT}.zip"
+      else
+        echo "No ${PKG_ROOT} dir found, can not generate maven zip!"
+        exit 1
+      fi
+    securityContext:
+      capabilities:
+        add:
+          - SETFCAP
+    workingDir: $(workspaces.source.path)
+  - image: quay.io/konflux-ci/oras:latest@sha256:9d6db5840c70e65fefe041201cc7ffe2d1661bd0582b590b54787213ccfd76e9
+    name: build
+    computeResources:
+      limits:
+        memory: 8Gi
+        cpu: '4'
+      requests:
+        memory: 2Gi
+        cpu: '1'
+    script: |
+      #!/bin/bash
+      set -e
+      maven_zip="$(workspaces.source.path)/cachi2/output/${PKG_ROOT}.zip"
+      if [ -f "/shared/${PKG_ROOT}.zip" ]; then
+        mv "/shared/${PKG_ROOT}.zip" "./${PKG_ROOT}.zip"
+        select-oci-auth "$IMAGE" > auth.json
+        oras push "$IMAGE" \
+        --registry-config auth.json \
+        --artifact-type application/vnd.maven+zip "${PKG_ROOT}.zip"
+        RESULTING_DIGEST=$(oras resolve --registry-config auth.json "${IMAGE}")
+        echo -n "$IMAGE" | tee "$(results.IMAGE_URL.path)"
+        echo -n "$RESULTING_DIGEST" | tee "$(results.IMAGE_DIGEST.path)"
+      else
+        echo "The maven zip file is not found!"
+        exit 1
+      fi
+
+      # Save the SBOM produced by Cachi2 so it can be merged into the final SBOM later
+      if [ -f "$(workspaces.source.path)/cachi2/output/bom.json" ]; then
+        cp "$(workspaces.source.path)/cachi2/output/bom.json" ./sbom-cachi2.json
+      else
+        echo "The SBOM file for fetched artifacts is not found!"
+        exit 1
+      fi
+    securityContext:
+      capabilities:
+        add:
+          - SETFCAP
+    volumeMounts:
+    - name: trusted-ca
+      mountPath: /mnt/trusted-ca
+      readOnly: true
+    workingDir: $(workspaces.source.path)
+  - name: prepare-sboms
+    image: quay.io/redhat-appstudio/sbom-utility-scripts-image@sha256:53a3041dff341b7fd1765b9cc2c324625d19e804b2eaff10a6e6d9dcdbde3a91
+    computeResources:
+      limits:
+        memory: 512Mi
+        cpu: 200m
+      requests:
+        memory: 256Mi
+        cpu: 100m
+    script: |
+      if [ -f sbom-cachi2.json ]; then
+        mv sbom-cachi2.json sbom-cyclonedx.json
+        echo "Creating sbom-purl.json"
+        python3 /scripts/create_purl_sbom.py
+      fi
+    workingDir: $(workspaces.source.path)
+    securityContext:
+      runAsUser: 0
+  - name: upload-sbom
+    image: quay.io/konflux-ci/appstudio-utils:ab6b0b8e40e440158e7288c73aff1cf83a2cc8a9@sha256:24179f0efd06c65d16868c2d7eb82573cce8e43533de6cea14fec3b7446e0b14
+    script: |
+      ca_bundle=/mnt/trusted-ca/ca-bundle.crt
+      if [ -f "$ca_bundle" ]; then
+        echo "INFO: Using mounted CA bundle: $ca_bundle"
+        cp -vf $ca_bundle /etc/pki/ca-trust/source/anchors
+        update-ca-trust
+      fi
+
+      cosign attach sbom --sbom sbom-cyclonedx.json --type cyclonedx "$IMAGE"
+
+      # Remove tag from IMAGE while allowing registry to contain a port number.
+      sbom_repo="${IMAGE%:*}"
+      sbom_tag="sha256-$(cat "$(results.IMAGE_DIGEST.path)" | cut -d: -f2).sbom"
+      # The SBOM_BLOB_URL is created by `cosign attach sbom`.
+      echo -n "${sbom_repo}:${sbom_tag}" | tee "$(results.SBOM_BLOB_URL.path)"
+    computeResources:
+      limits:
+        memory: 512Mi
+        cpu: 200m
+      requests:
+        memory: 256Mi
+        cpu: 100m
+    volumeMounts:
+    - name: trusted-ca
+      mountPath: /mnt/trusted-ca
+      readOnly: true
+    workingDir: $(workspaces.source.path)
+
+  volumes:
+  - name: shared
+    emptyDir: {}
+  - name: trusted-ca
+    configMap:
+      name: $(params.caTrustConfigMapName)
+      items:
+        - key: $(params.caTrustConfigMapKey)
+          path: ca-bundle.crt
+      optional: true
+  workspaces:
+  - name: source
+    description: Workspace containing the source code to build.
