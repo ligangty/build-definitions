@@ -12,6 +12,7 @@ sources:
         - basic-auth
         - ssh-directory
         - netrc
+        - gitops-auth
       required_task_results:
         # Certain EC rules rely on the presence of these results when validating an image.
         - task: clair-scan
@@ -26,9 +27,5 @@ sources:
         - kind
         - results
         - step_image_registries
+        - step_images
         - trusted_artifacts
-      exclude:
-        # https://issues.redhat.com/browse/KFLUXBUGS-1111
-        - step_image_registries.step_images_permitted:generate-odcs-compose/noversion
-        # https://issues.redhat.com/browse/KFLUXBUGS-1110
-        - step_image_registries.step_images_permitted:verify-signed-rpms/noversion

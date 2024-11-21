@@ -38,7 +38,7 @@ spec:
         optional: true
   steps:
     - name: sast-snyk-check
-      image: quay.io/redhat-appstudio/konflux-test:v1.4.7@sha256:cf6808a3bd605630a5d9f20595ff7c43f8645c00381219d32f5a11e88fe37072
+      image: quay.io/redhat-appstudio/konflux-test:v1.4.8@sha256:2224fabdb0a28a415d4af4c58ae53d7c4c53c83c315f12e07d1d7f48a80bfa70
       # per https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting
       # the cluster will set imagePullPolicy to IfNotPresent
       workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
@@ -64,7 +64,7 @@ spec:
           SNYK_TOKEN="$(cat ${SNYK_TOKEN_PATH})"
           export SNYK_TOKEN
         else
-          to_enable_snyk='[here](https://redhat-appstudio.github.io/docs.appstudio.io/Documentation/main/how-to-guides/testing_applications/enable_snyk_check_for_a_product/)'
+          to_enable_snyk='[here](https://konflux-ci.dev/docs/how-tos/testing/build/snyk/)'
           note="Task $(context.task.name) skipped: If you wish to use the Snyk code SAST task, please create a secret name snyk-secret with the key "snyk_token" containing the Snyk token by following the steps given ${to_enable_snyk}"
           TEST_OUTPUT=$(make_result_json -r SKIPPED -t "$note")
           echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
@@ -95,7 +95,7 @@ spec:
         fi
         echo "${TEST_OUTPUT:-${ERROR_OUTPUT}}" | tee $(results.TEST_OUTPUT.path)
     - name: upload
-      image: quay.io/konflux-ci/oras:latest@sha256:0fdcb8ad0528042006457e57281532409a4d6e891f61208f96ab2b7b7b1746b6
+      image: quay.io/konflux-ci/oras:latest@sha256:7a85f12b14b9122df29450dfa60c6d035b04db1a7372f7b606a0fb74ed716844
       workingDir: $(workspaces.workspace.path)/hacbs/$(context.task.name)
       env:
         - name: IMAGE_URL

@@ -114,7 +114,7 @@ spec:
         name: workdir
   steps:
     - name: skip-ta
-      image: registry.access.redhat.com/ubi9/ubi-minimal:9.4-1194@sha256:73f7dcacb460dad137a58f24668470a5a2e47378838a0190eef0ab532c6e8998
+      image: registry.access.redhat.com/ubi9/ubi-minimal:9.4-1227.1726694542@sha256:f5d2c6a1e0c86e4234ea601552dbabb4ced0e013a1efcbfb439f1f6a7a9275b0
       env:
         - name: INPUT
           value: $(params.input)
@@ -130,21 +130,21 @@ spec:
           echo -n "" >$(results.CACHI2_ARTIFACT.path)
         fi
     - name: use-trusted-artifact
-      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:e0e457b6af10e44ff6b90208a9e69adc863a865e1c062c4cb84bf3846037d74d
+      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:81c4864dae6bb11595f657be887e205262e70086a05ed16ada827fd6391926ac
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
     - name: sanitize-cachi2-config-file-with-yq
-      image: quay.io/konflux-ci/yq:latest@sha256:f758d9a25bc88cc114bfb6137fd4d649db427de5a4217e818b8466ad5bf9255c
+      image: quay.io/konflux-ci/yq:latest@sha256:343c2ca0a347ae87fe43750ee0873e1fe813f77eff56e9722c840bb75d97fef2
       script: |
         if [ -n "${CONFIG_FILE_CONTENT}" ]; then
           # we need to drop 'goproxy_url' for safety reasons until cachi2 decides what the SBOM
           # impact of this configuration option will be:
           # https://github.com/containerbuildsystem/cachi2/issues/577
-          yq 'del(.goproxy_url)' <<<"${CONFIG_FILE_CONTENT}"  >/mnt/config/config.yaml
+          yq 'del(.goproxy_url)' <<<"${CONFIG_FILE_CONTENT}" >/mnt/config/config.yaml
         fi
     - name: prefetch-dependencies
-      image: quay.io/redhat-appstudio/cachi2:0.11.0@sha256:1051a8e55f4b6dddb5591ac103644e1d45b2367cffe50ba900418939aace0fb2
+      image: quay.io/redhat-appstudio/cachi2:0.14.0@sha256:3088e307f41894c0654b69bb199a4648ba31721d6173099cf6ca8ff259c0e457
       volumeMounts:
         - mountPath: /mnt/trusted-ca
           name: trusted-ca
@@ -226,7 +226,7 @@ spec:
         cachi2 --log-level="$LOG_LEVEL" inject-files /var/workdir/cachi2/output \
           --for-output-dir=/cachi2/output
     - name: create-trusted-artifact
-      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:e0e457b6af10e44ff6b90208a9e69adc863a865e1c062c4cb84bf3846037d74d
+      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:81c4864dae6bb11595f657be887e205262e70086a05ed16ada827fd6391926ac
       args:
         - create
         - --store

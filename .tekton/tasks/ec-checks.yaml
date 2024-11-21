@@ -13,7 +13,7 @@ spec:
     This task can be used to run enterprise contract checks
   steps:
   - name: gather-tasks
-    image: quay.io/konflux-ci/appstudio-utils:ab6b0b8e40e440158e7288c73aff1cf83a2cc8a9@sha256:24179f0efd06c65d16868c2d7eb82573cce8e43533de6cea14fec3b7446e0b14
+    image: quay.io/konflux-ci/appstudio-utils:48c311af02858e2422d6229600e9959e496ddef1@sha256:91ddd999271f65d8ec8487b10f3dd378f81aa894e11b9af4d10639fd52bba7e8
     # per https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting
     # the cluster will set imagePullPolicy to IfNotPresent
     workingDir: $(workspaces.source.path)/source
@@ -23,7 +23,7 @@ spec:
       $(all_tasks_dir all_tasks-ec)
   - name: validate-all-tasks
     workingDir: "$(workspaces.source.path)/source"
-    image: quay.io/enterprise-contract/ec-cli:snapshot@sha256:2784e6899ce02e8a5a46a8a74846f8ab33a4a816a1c6c712c6c18f05998ccabc
+    image: quay.io/enterprise-contract/ec-cli:snapshot@sha256:984e8e38b506753aced7b25e8feb86311d221dd60f6ae6d97f18fbb056944c47
     script: |
       set -euo pipefail
 
@@ -37,7 +37,7 @@ spec:
       ec validate input --policy "${policy}" --output yaml --strict=true ${args[*]}
   - name: validate-build-tasks
     workingDir: "$(workspaces.source.path)/source"
-    image: quay.io/enterprise-contract/ec-cli:snapshot@sha256:2784e6899ce02e8a5a46a8a74846f8ab33a4a816a1c6c712c6c18f05998ccabc
+    image: quay.io/enterprise-contract/ec-cli:snapshot@sha256:984e8e38b506753aced7b25e8feb86311d221dd60f6ae6d97f18fbb056944c47
     script: |
       set -euo pipefail
 

@@ -64,7 +64,7 @@ spec:
 
   steps:
   - name: sanitize-cachi2-config-file-with-yq
-    image: quay.io/konflux-ci/yq:latest@sha256:f758d9a25bc88cc114bfb6137fd4d649db427de5a4217e818b8466ad5bf9255c
+    image: quay.io/konflux-ci/yq:latest@sha256:343c2ca0a347ae87fe43750ee0873e1fe813f77eff56e9722c840bb75d97fef2
     script: |
       if [ -n "${CONFIG_FILE_CONTENT}" ]
       then
@@ -74,7 +74,7 @@ spec:
         yq 'del(.goproxy_url)' <<< "${CONFIG_FILE_CONTENT}" > /mnt/config/config.yaml
       fi
 
-  - image: quay.io/redhat-appstudio/cachi2:0.11.0@sha256:1051a8e55f4b6dddb5591ac103644e1d45b2367cffe50ba900418939aace0fb2
+  - image: quay.io/redhat-appstudio/cachi2:0.14.0@sha256:3088e307f41894c0654b69bb199a4648ba31721d6173099cf6ca8ff259c0e457
     # per https://kubernetes.io/docs/concepts/containers/images/#imagepullpolicy-defaulting
     # the cluster will set imagePullPolicy to IfNotPresent
     name: prefetch-dependencies

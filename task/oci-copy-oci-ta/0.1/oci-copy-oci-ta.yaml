@@ -66,12 +66,12 @@ spec:
         name: workdir
   steps:
     - name: use-trusted-artifact
-      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:e0e457b6af10e44ff6b90208a9e69adc863a865e1c062c4cb84bf3846037d74d
+      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:81c4864dae6bb11595f657be887e205262e70086a05ed16ada827fd6391926ac
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
     - name: prepare
-      image: quay.io/konflux-ci/yq:latest@sha256:f758d9a25bc88cc114bfb6137fd4d649db427de5a4217e818b8466ad5bf9255c
+      image: quay.io/konflux-ci/yq:latest@sha256:343c2ca0a347ae87fe43750ee0873e1fe813f77eff56e9722c840bb75d97fef2
       workingDir: /var/workdir
       script: |
         #!/bin/bash
@@ -100,7 +100,7 @@ spec:
           cat "/var/workdir/vars/$filename"
         done
     - name: oci-copy
-      image: quay.io/konflux-ci/oras:latest@sha256:0fdcb8ad0528042006457e57281532409a4d6e891f61208f96ab2b7b7b1746b6
+      image: quay.io/konflux-ci/oras:latest@sha256:7a85f12b14b9122df29450dfa60c6d035b04db1a7372f7b606a0fb74ed716844
       workingDir: /var/workdir
       volumeMounts:
         - mountPath: /var/lib/containers
@@ -159,7 +159,7 @@ spec:
         host;x-amz-content-sha256;x-amz-date
         $payload_digest
         EOF
-            canonical_request=$(echo -n "$canonical_request" | head -c -1)  # Strip trailing newline
+            canonical_request=$(echo -n "$canonical_request" | head -c -1) # Strip trailing newline
             canonical_digest=$(echo -n "$canonical_request" | sha256sum | cut -d " " -f 1)
 
             # Step 2: construct string to sign
@@ -169,7 +169,7 @@ spec:
         ${date%T*}/$region/s3/aws4_request
         $canonical_digest
         EOF
-            string_to_sign=$(echo -n "$string_to_sign" | head -c -1)  # Strip trailing newline
+            string_to_sign=$(echo -n "$string_to_sign" | head -c -1) # Strip trailing newline
 
             # Step 3: derive a signing key
             startkey="AWS4${AWS_SECRET_ACCESS_KEY}"
@@ -183,11 +183,11 @@ spec:
             authorization="AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY_ID}/${date%T*}/${region}/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=${signature}"
 
             curl "${curl_args[@]}" \
-                -H "X-Amz-Date: ${date}" \
-                -H "X-Amz-Content-SHA256: $payload_digest" \
-                -H "Authorization: ${authorization}" \
-                --location "$url" \
-                -o "$file"
+              -H "X-Amz-Date: ${date}" \
+              -H "X-Amz-Content-SHA256: $payload_digest" \
+              -H "Authorization: ${authorization}" \
+              --location "$url" \
+              -o "$file"
           elif [ -n "${BEARER_TOKEN:-}" ]; then
             echo "Found bearer token. Using it for authentication."
             curl "${curl_args[@]}" -H "Authorization: Bearer ${BEARER_TOKEN}" --location "$url" -o "$file"
@@ -228,9 +228,9 @@ spec:
 
         echo "Ensuring that the empty blob exists, for the image manifest config."
         echo -n "{}" | oras blob push \
-                --registry-config auth.json \
-                ${REPO}@sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a \
-                --media-type application/vnd.oci.empty.v1+json --size 2 -
+          --registry-config auth.json \
+          ${REPO}@sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a \
+          --media-type application/vnd.oci.empty.v1+json --size 2 -
 
         for varfile in "/var/workdir"/vars/*; do
           echo "Reading $varfile"
@@ -288,7 +288,7 @@ spec:
           add:
             - SETFCAP
     - name: sbom-generate
-      image: quay.io/konflux-ci/yq:latest@sha256:f758d9a25bc88cc114bfb6137fd4d649db427de5a4217e818b8466ad5bf9255c
+      image: quay.io/konflux-ci/yq:latest@sha256:343c2ca0a347ae87fe43750ee0873e1fe813f77eff56e9722c840bb75d97fef2
       workingDir: /var/workdir
       script: |
         #!/bin/bash
@@ -315,12 +315,12 @@ spec:
           yq -oj -i '.components += [ {"purl": "'$purl'", "type": "file", "name": "'$OCI_FILENAME'", "hashes": [{"alg": "SHA-256", "content": "'$OCI_ARTIFACT_DIGEST'"}], "externalReferences": [{"type": "distribution", "url": "'$OCI_SOURCE'"}]} ]' sbom-cyclonedx.json
         done
     - name: upload-sbom
-      image: quay.io/konflux-ci/appstudio-utils:ab6b0b8e40e440158e7288c73aff1cf83a2cc8a9@sha256:24179f0efd06c65d16868c2d7eb82573cce8e43533de6cea14fec3b7446e0b14
+      image: quay.io/konflux-ci/appstudio-utils:48c311af02858e2422d6229600e9959e496ddef1@sha256:91ddd999271f65d8ec8487b10f3dd378f81aa894e11b9af4d10639fd52bba7e8
       workingDir: /var/workdir
       script: |
         cosign attach sbom --sbom sbom-cyclonedx.json --type cyclonedx "$(cat "$(results.IMAGE_REF.path)")"
     - name: report-sbom-url
-      image: quay.io/konflux-ci/yq:latest@sha256:f758d9a25bc88cc114bfb6137fd4d649db427de5a4217e818b8466ad5bf9255c
+      image: quay.io/konflux-ci/yq:latest@sha256:343c2ca0a347ae87fe43750ee0873e1fe813f77eff56e9722c840bb75d97fef2
       workingDir: /var/workdir
       script: |
         #!/bin/bash

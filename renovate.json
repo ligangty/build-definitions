@@ -4,6 +4,7 @@
     "config:base"
   ],
   "dependencyDashboard": false,
+  "prConcurrentLimit": 20,
   "tekton": {
     "fileMatch": ["\\.yaml$", "\\.yml$"],
     "includePaths": [
@@ -45,7 +46,7 @@
       "matchPackageNames": [
         "quay.io/redhat-appstudio/konflux-test",
         "quay.io/redhat-appstudio/clair-in-ci",
-        "quay.io/redhat-appstudio/clamav-db"
+        "quay.io/konflux-ci/clamav-db"
       ],
       "groupName": "integration",
       "reviewers": ["dirgim", "hongweiliu17", "jsztuka", "Josh-Everett", " 14rcole", "chipspeak", "dheerajodha", "kasemAlem", "jencull", "sonam1412"]
@@ -67,8 +68,13 @@
       "groupName": "shared"
     },
     {
+      "groupName": "github-actions",
+      "matchManagers": ["github-actions"],
+      "schedule": ["on monday"]
+    },
+    {
       "matchPackageNames": [
-        "quay.io/redhat-appstudio/clamav-db"
+        "quay.io/konflux-ci/clamav-db"
       ],
       "enabled": false,
       "groupName": "ignore"

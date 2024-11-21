@@ -65,12 +65,12 @@ spec:
         name: varlibcontainers
   steps:
     - name: use-trusted-artifact
-      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:e0e457b6af10e44ff6b90208a9e69adc863a865e1c062c4cb84bf3846037d74d
+      image: quay.io/redhat-appstudio/build-trusted-artifacts:latest@sha256:81c4864dae6bb11595f657be887e205262e70086a05ed16ada827fd6391926ac
       args:
         - use
         - $(params.SOURCE_ARTIFACT)=/var/workdir/source
     - name: validate-bib-config
-      image: quay.io/konflux-ci/yq:latest@sha256:f758d9a25bc88cc114bfb6137fd4d649db427de5a4217e818b8466ad5bf9255c
+      image: quay.io/konflux-ci/yq:latest@sha256:343c2ca0a347ae87fe43750ee0873e1fe813f77eff56e9722c840bb75d97fef2
       script: |-
         #!/bin/bash
         set -o verbose
@@ -200,9 +200,9 @@ spec:
 
         mkdir output
         echo "PULLING BUILDER IMAGE"
-        time sudo podman pull --authfile=$BUILD_DIR/.docker/config.json $BOOTC_BUILDER_IMAGE
+        time sudo podman pull --authfile=$BUILD_DIR/.docker/config.json --retry 10 $BOOTC_BUILDER_IMAGE
         echo "PULLING IMAGE"
-        time sudo podman pull --authfile=$BUILD_DIR/.docker/config.json $SOURCE_IMAGE
+        time sudo podman pull --authfile=$BUILD_DIR/.docker/config.json --retry 10 $SOURCE_IMAGE
         echo "TAGGING IMAGE"
         time sudo podman tag $SOURCE_IMAGE $TAGGED_AS
         echo "RUNNING BUILD"
@@ -266,7 +266,7 @@ spec:
           # already compressed.
           buildah manifest add --arch $(arch) --os linux --artifact --artifact-type application/vnd.diskimage.gce.tgz $OUTPUT_IMAGE /output/gce/image.tar.gz
         fi
-        buildah manifest push --digestfile image-digest --authfile /.docker/config.json --all $OUTPUT_IMAGE
+        buildah manifest push --digestfile image-digest --authfile /.docker/config.json --retry 10 --all $OUTPUT_IMAGE
 
         # At this point, we have pushed an image index of length 1 to the registry.
         # Next, extract a reference to the image manifest and expose that, throwing away the image index.

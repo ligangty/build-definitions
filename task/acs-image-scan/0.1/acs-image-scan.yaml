@@ -60,7 +60,7 @@ spec:
         oc annotate taskrun $(context.taskRun.name) task.output.location=logs
 
     - name: rox-image-scan
-      image: registry.access.redhat.com/ubi8-minimal@sha256:a47c89f02b39a98290f88204ed3d162845db0a0c464b319c2596cfd1e94b444e
+      image: registry.access.redhat.com/ubi8-minimal@sha256:7583ca0ea52001562bd81a961da3f75222209e6192e4e413ee226cff97dbd48c
       volumeMounts:
         - name: rox-secret
           mountPath: /rox-secret
@@ -129,20 +129,31 @@ spec:
         echo "roxctl image scan"
 
         IMAGE=${PARAM_IMAGE}@${PARAM_IMAGE_DIGEST}
-        ./roxctl image scan \
-          $( [ "${PARAM_INSECURE_SKIP_TLS_VERIFY}" = "true" ] && \
-          echo -n "--insecure-skip-tls-verify") \
-          -e "${ROX_CENTRAL_ENDPOINT}" --image "$IMAGE" --output json --force \
-          > roxctl_image_scan_output.json
-        image_scan_err_code=$?
-        cp roxctl_image_scan_output.json /steps-shared-folder/acs-image-scan.json
-        if [ $image_scan_err_code -ne 0 ]; then
-          cat roxctl_image_scan_output.json
-          note='ACS image scan failed to process the image. See the task logs for more details.'
-          echo $note
-          set_test_output_result ERROR "$note"
-          exit 2
-        fi
+        retry=3
+        while true; do
+          retry=$(( retry - 1 ))
+          ./roxctl image scan \
+            $( [ "${PARAM_INSECURE_SKIP_TLS_VERIFY}" = "true" ] && \
+            echo -n "--insecure-skip-tls-verify") \
+            -e "${ROX_CENTRAL_ENDPOINT}" --image "$IMAGE" --output json --force \
+            > roxctl_image_scan_output.json
+          image_scan_err_code=$?
+          cp -f roxctl_image_scan_output.json /steps-shared-folder/acs-image-scan.json
+          if [ $image_scan_err_code -ne 0 ]; then
+            cat roxctl_image_scan_output.json
+            if [ "$(grep -c "context deadline exceeded" roxctl_image_scan_output.json)" -ne 0 ] && [ $retry -gt 0 ]; then
+              echo "Retry in 5m"
+              sleep 300
+            else
+              note='ACS image scan failed to process the image. See the task logs for more details.'
+              echo "$note"
+              set_test_output_result ERROR "$note"
+              exit 2
+            fi
+          else
+            break
+          fi
+        done
 
         # Set SCAN_OUTPUT result
         critical=$(cat roxctl_image_scan_output.json | grep -oP '(?<="CRITICAL": )\d+')
@@ -160,7 +171,7 @@ spec:
         set_test_output_result SUCCESS "$note"
 
     - name: report
-      image: registry.access.redhat.com/ubi8-minimal@sha256:a47c89f02b39a98290f88204ed3d162845db0a0c464b319c2596cfd1e94b444e
+      image: registry.access.redhat.com/ubi8-minimal@sha256:7583ca0ea52001562bd81a961da3f75222209e6192e4e413ee226cff97dbd48c
       volumeMounts:
         - name: shared-folder
           mountPath: /steps-shared-folder

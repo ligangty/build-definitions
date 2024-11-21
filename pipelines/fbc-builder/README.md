@@ -146,6 +146,7 @@ This pipeline is pushed as a Tekton bundle to [quay.io](https://quay.io/reposito
 |IMAGE_DIGEST| Digest of the image just built| deprecated-base-image-check:0.4:IMAGE_DIGEST ; inspect-image:0.1:IMAGE_DIGEST ; fbc-validate:0.1:IMAGE_DIGEST|
 |IMAGE_REF| Image reference of the built image containing both the repository and the digest| |
 |IMAGE_URL| Image repository and tag where the built image was pushed| show-sbom:0.1:IMAGE_URL ; deprecated-base-image-check:0.4:IMAGE_URL ; apply-tags:0.1:IMAGE ; inspect-image:0.1:IMAGE_URL ; fbc-validate:0.1:IMAGE_URL|
+|SBOM_BLOB_URL| Reference of SBOM blob digest to enable digest-based verification from provenance| |
 ### buildah:0.2 task results
 |name|description|used in params (taskname:taskrefversion:taskparam)
 |---|---|---|
@@ -171,6 +172,8 @@ This pipeline is pushed as a Tekton bundle to [quay.io](https://quay.io/reposito
 ### git-clone:0.1 task results
 |name|description|used in params (taskname:taskrefversion:taskparam)
 |---|---|---|
+|CHAINS-GIT_COMMIT| The precise commit SHA that was fetched by this Task. This result uses Chains type hinting to include in the provenance.| |
+|CHAINS-GIT_URL| The precise URL that was fetched by this Task. This result uses Chains type hinting to include in the provenance.| |
 |commit| The precise commit SHA that was fetched by this Task.| build-container:0.2:COMMIT_SHA ; build-image-index:0.1:COMMIT_SHA|
 |commit-timestamp| The commit timestamp of the checkout| |
 |short-commit| The commit SHA that was fetched by this Task limited to params.shortCommitLength number of characters| |

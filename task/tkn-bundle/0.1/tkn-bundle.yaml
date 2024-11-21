@@ -41,7 +41,7 @@ spec:
     - name: TASK_FILE
       value: tekton_task_files
   steps:
-  - image: quay.io/redhat-appstudio/konflux-test:latest@sha256:cf6808a3bd605630a5d9f20595ff7c43f8645c00381219d32f5a11e88fe37072
+  - image: quay.io/redhat-appstudio/konflux-test:latest@sha256:2224fabdb0a28a415d4af4c58ae53d7c4c53c83c315f12e07d1d7f48a80bfa70
     name: modify-task-files
     env:
     - name: CONTEXT
@@ -72,23 +72,23 @@ spec:
         if [[ -d "$(workspaces.source.path)/${path}" ]]; then
           # for directories look for any .yaml or .yml files
           paths+=(
-            $(workspaces.source.path)/${path}/**/*.yaml
-            $(workspaces.source.path)/${path}/**/*.yml
+            "$(workspaces.source.path)/${path}"/**/*.yaml
+            "$(workspaces.source.path)/${path}"/**/*.yml
           )
         else
           # for files add the file to the collected paths
           paths+=("${path}")
         fi
         if [[ $neg == 0 ]]; then
-          # collect curent paths to FILES
+          # collect current paths to FILES
           FILES+=("${paths[@]}")
         else
           if [[ ${#PATHS[@]} -eq 1 ]]; then
             # single negative path provided, first include everything then
             # subtract the negative elements
             FILES=(
-              $(workspaces.source.path)/**/*.yaml
-              $(workspaces.source.path)/**/*.yml
+              "$(workspaces.source.path)"/**/*.yaml
+              "$(workspaces.source.path)"/**/*.yml
             )
           fi
           for p in "${paths[@]}"; do
@@ -132,12 +132,13 @@ spec:
         && exit 1
       exec 3>&1;
 
+      # shellcheck disable=SC2046
       OUT="$(tkn bundle push "$IMAGE" \
         $(printf ' -f %s' "${FILES[@]}") \
         |tee /proc/self/fd/3)"
-      echo -n "$IMAGE" > $(results.IMAGE_URL.path)
+      echo -n "$IMAGE" > "$(results.IMAGE_URL.path)"
       digest="${OUT#*Pushed Tekton Bundle to *@}"
-      echo -n "${digest}" > $(results.IMAGE_DIGEST.path)
+      echo -n "${digest}" > "$(results.IMAGE_DIGEST.path)"
       echo -n "${IMAGE}@${digest}" > "$(results.IMAGE_REF.path)"
 
       # cleanup task file

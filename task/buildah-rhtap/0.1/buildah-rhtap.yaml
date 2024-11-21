@@ -65,7 +65,7 @@ spec:
       value: $(params.BUILD_ARGS_FILE)
   steps:
   - name: build
-    image: registry.access.redhat.com/ubi9/buildah@sha256:29402688af2b394a8400d946751520dbaea64759bbce2ef6928dc58ede6020e6
+    image: registry.access.redhat.com/ubi9/buildah@sha256:c62b2318eb4709c216ad25969abae5ff6b56e9879d266b539a46fdfc99e8361e
     args:
       - $(params.BUILD_ARGS[*])
     script: |
@@ -137,7 +137,7 @@ spec:
       name: tmpfiles
 
   - name: merge-sboms
-    image: registry.access.redhat.com/ubi8/python-311@sha256:6cc79822da3610cb30e5fa1f5afebe2b36c69db3f03841638139a54b3c307e42
+    image: registry.access.redhat.com/ubi8/python-311@sha256:ec2f4c89e18373c75a72f5b47da4d3ee826e8961a9c6a26ba2fd3112f5a41e4a
     env:
       - name: RESULT_PATH
         value: $(results.SBOM_BLOB_URL.path)
@@ -205,7 +205,7 @@ spec:
     workingDir: /tmp/files
 
   - name: upload-sbom
-    image: registry.redhat.io/rhtas-tech-preview/cosign-rhel9:0.0.2@sha256:151f4a1e721b644bafe47bf5bfb8844ff27b95ca098cc37f3f6cbedcda79a897
+    image: registry.redhat.io/rhtas/cosign-rhel9:e28487714294d5c205e95da843e86fd28e4d3355d6a4d328a872c62ed0cf5f93@sha256:6fa39582a3d62a2aa5404397bb638fdd0960f9392db659d033d7bacf70bddfb1
     command: [cosign]
     args:
       - attach
